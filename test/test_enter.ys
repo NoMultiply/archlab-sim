@@ -1,0 +1,38 @@
+.pos 0
+init:	irmovl Stack, %esp
+	irmovl Stack, %ebp
+	jmp Main
+
+.align 4
+mem:
+	.long 0xff00
+	.long 0x0ff0
+
+Main:
+	irmovl $0, %eax
+	iaddl $0xa, %eax
+
+	irmovl $0xa, %ebx
+	isubl $5, %ebx
+
+	irmovl $5, %ecx
+	ixorl $1, %ecx
+
+	irmovl $5, %edx
+	iandl $6, %edx
+
+	irmovl mem, %esi
+	irmovl $0x00ee, %edi
+	rmxchg %edi, (%esi)
+	rmxchg %edi, 4(%esi)
+
+	call test_enter
+	halt
+
+test_enter: enter
+	rrmovl %ebp, %edi
+	leave
+	ret
+
+.pos 0x400
+Stack:

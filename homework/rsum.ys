@@ -1,0 +1,53 @@
+.pos 0
+init:
+  irmovl Stack, %esp
+	irmovl Stack, %ebp
+	call Main
+	halt
+
+.align 4
+ele1:
+  .long 0x00a
+  .long ele2
+ele2:
+  .long 0x0b0
+  .long ele3
+ele3:
+  .long 0xc00
+  .long ele4
+ele4:
+  .long 0xd000
+  .long 0
+
+Main:
+	pushl %ebp
+	rrmovl %esp,%ebp
+	irmovl ele1,%edx
+	pushl %edx
+	call rsum_list
+	rrmovl %ebp,%esp
+	popl %ebp
+	ret
+
+rsum_list:
+	pushl %ebp
+	rrmovl %esp,%ebp
+	mrmovl 8(%ebp),%edx
+	xorl %eax,%eax
+	andl %edx,%edx
+	je End
+	mrmovl (%edx),%eax
+  pushl %eax
+  mrmovl 4(%edx),%esi
+  pushl %esi
+  call rsum_list
+  popl %esi
+  popl %edx
+  addl %edx,%eax
+End:
+	rrmovl %ebp,%esp
+	popl %ebp
+	ret
+
+.pos 0x100
+Stack:
