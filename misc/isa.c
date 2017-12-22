@@ -80,6 +80,8 @@ instr_t instruction_set[] =
     {"subl",   HPACK(I_ALU, A_SUB), 2, R_ARG, 1, 1, R_ARG, 1, 0 },
     {"andl",   HPACK(I_ALU, A_AND), 2, R_ARG, 1, 1, R_ARG, 1, 0 },
     {"xorl",   HPACK(I_ALU, A_XOR), 2, R_ARG, 1, 1, R_ARG, 1, 0 },
+    {"mull",   HPACK(I_ALU, A_MUL), 2, R_ARG, 1, 1, NO_ARG, 0, 0 },
+    {"divl",   HPACK(I_ALU, A_DIV), 2, R_ARG, 1, 1, NO_ARG, 0, 0 },
     /* arg1hi indicates number of bytes */
     {"jmp",    HPACK(I_JMP, C_YES), 5, I_ARG, 1, 4, NO_ARG, 0, 0 },
     {"jle",    HPACK(I_JMP, C_LE), 5, I_ARG, 1, 4, NO_ARG, 0, 0 },
@@ -448,6 +450,8 @@ struct {
     {'-',   A_SUB},
     {'&',   A_AND},
     {'^',   A_XOR},
+    {'*',   A_MUL},
+    {'/',   A_DIV},
     {'?',   A_NONE}
 };
 
@@ -474,7 +478,41 @@ word_t compute_alu(alu_t op, word_t argA, word_t argB)
 	break;
     case A_XOR:
 	val = argA^argB;
+  break;
+    case A_MUL:
+  val = argA*argB;
 	break;
+    case A_DIV:
+  val = argB/argA;
+  break;
+    default:
+	val = 0;
+    }
+    return val;
+}
+
+word_t compute_alu2(alu_t op, word_t argA, word_t argB)
+{
+    word_t val;
+    switch(op) {
+    case A_ADD:
+	val = argA+argB;
+	break;
+    case A_SUB:
+	val = argB-argA;
+	break;
+    case A_AND:
+	val = argA&argB;
+	break;
+    case A_XOR:
+	val = argA^argB;
+	break;
+    case A_MUL:
+  val = (word_t)((long long)argA*(long long)argB >> 32);
+	break;
+    case A_DIV:
+  val = argB%argA;
+  break;
     default:
 	val = 0;
     }
@@ -496,6 +534,9 @@ cc_t compute_cc(alu_t op, word_t argA, word_t argB)
         ovf = (((int) argA > 0) == ((int) argB < 0)) &&
 	       (((int) val < 0) != ((int) argB < 0));
 	break;
+    case A_MUL:
+        ovf = !!(((long long)argA * (long long)argB) & 0xffffffff00000000);
+  break;
     case A_AND:
     case A_XOR:
 	ovf = FALSE;
@@ -836,8 +877,23 @@ stat_t step_state(state_ptr s, FILE *error_file)
 	}
 	argA = get_reg_val(s->r, hi1);
 	argB = get_reg_val(s->r, lo1);
-	val = compute_alu(lo0, argA, argB);
-	set_reg_val(s->r, lo1, val);
+  if (lo0 == A_MUL || lo0 == A_DIV) {
+    if (lo0 == A_DIV && argA == 0) {
+      if (error_file)
+		fprintf(error_file,
+			"PC = 0x%x, Divide zero\n", s->pc);
+	    return STAT_INS;
+    }
+    argB = get_reg_val(s->r, REG_EAX);
+  	val = compute_alu(lo0, argA, argB);
+    set_reg_val(s->r, REG_EAX, val);
+    temp_val = compute_alu2(lo0, argA, argB);
+    set_reg_val(s->r, REG_EDX, temp_val);
+  }
+  else {
+	 val = compute_alu(lo0, argA, argB);
+	 set_reg_val(s->r, lo1, val);
+  }
 	s->cc = compute_cc(lo0, argA, argB);
 	s->pc = ftpc;
 	break;

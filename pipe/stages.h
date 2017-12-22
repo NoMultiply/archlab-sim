@@ -56,6 +56,7 @@ typedef struct {
     /* The following is included for debugging */
     word_t stage_pc;
     byte_t deste2;
+    word_t vale2;
 } ex_mem_ele, *ex_mem_ptr;
 
 /* Mem/WB Pipe Register */
@@ -70,6 +71,7 @@ typedef struct {
     /* The following is included for debugging */
     word_t stage_pc;
     byte_t deste2;
+    word_t vale2;
 } mem_wb_ele, *mem_wb_ptr;
 
 /************ Global Declarations ********************/

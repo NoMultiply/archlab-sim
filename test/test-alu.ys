@@ -1,0 +1,23 @@
+.pos 0
+init:	irmovl Stack, %esp
+	irmovl Stack, %ebp
+	jmp Main
+
+.align 4
+mem:
+	.long 0xff00
+	.long 0x0ff0
+
+Main:
+	irmovl $0x7fffffff, %eax
+  irmovl $0x7fffffff, %ebx
+	mull %ebx
+
+	iaddl $6, %eax
+  irmovl $2, %ebx
+  divl %ebx
+
+	halt
+
+.pos 0x400
+Stack:

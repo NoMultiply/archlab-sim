@@ -28,7 +28,7 @@ typedef enum { I_HALT, I_NOP, I_RRMOVL, I_IRMOVL, I_RMMOVL, I_MRMOVL,
 	       I_IALU, I_LEAVE, I_ENTER, I_RMXCHG, I_POP2 } itype_t;
 
 /* Different ALU operations */
-typedef enum { A_ADD, A_SUB, A_AND, A_XOR, A_NONE } alu_t;
+typedef enum { A_ADD, A_SUB, A_AND, A_XOR, A_MUL, A_DIV, A_NONE } alu_t;
 
 /* Default function code */
 typedef enum { F_NONE } fun_t;
@@ -147,6 +147,7 @@ void dump_reg(FILE *outfile, mem_t r);
 
 /* Compute ALU operation */
 word_t compute_alu(alu_t op, word_t arg1, word_t arg2);
+word_t compute_alu2(alu_t op, word_t arg1, word_t arg2);
 
 typedef unsigned char cc_t;
 

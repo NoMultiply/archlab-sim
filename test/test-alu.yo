@@ -1,0 +1,23 @@
+  0x000:              | .pos 0
+  0x000: 30f400040000 | init:	irmovl Stack, %esp
+  0x006: 30f500040000 | 	irmovl Stack, %ebp
+  0x00c: 701c000000   | 	jmp Main
+                      | 
+  0x014:              | .align 4
+  0x014:              | mem:
+  0x014: 00ff0000     | 	.long 0xff00
+  0x018: f00f0000     | 	.long 0x0ff0
+                      | 
+  0x01c:              | Main:
+  0x01c: 30f0ffffff7f | 	irmovl $0x7fffffff, %eax
+  0x022: 30f3ffffff7f |   irmovl $0x7fffffff, %ebx
+  0x028: 643f         | 	mull %ebx
+                      | 
+  0x02a: c0f006000000 | 	iaddl $6, %eax
+  0x030: 30f302000000 |   irmovl $2, %ebx
+  0x036: 653f         |   divl %ebx
+                      | 
+  0x038: 00           | 	halt
+                      | 
+  0x400:              | .pos 0x400
+  0x400:              | Stack:

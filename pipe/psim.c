@@ -330,6 +330,7 @@ word_t cc_in = DEFAULT_CC;
 word_t wb_destE = REG_NONE;
 word_t wb_destE2 = REG_NONE;
 word_t wb_valE = 0;
+word_t wb_valE2 = 0;
 word_t wb_destM = REG_NONE;
 word_t wb_valM = 0;
 word_t mem_addr = 0;
@@ -585,6 +586,7 @@ void sim_reset()
     wb_destE = REG_NONE;
     wb_destE2 = REG_NONE;
     wb_valE = 0;
+    wb_valE2 = 0;
     wb_destM = REG_NONE;
     wb_valM = 0;
     mem_addr = 0;
@@ -610,8 +612,8 @@ static void update_state(bool_t update_mem, bool_t update_cc)
     }
     if (wb_destE2 != REG_NONE) {
        sim_log("\tWriteback: Wrote 0x%x to register %s\n",
-     		wb_valE, reg_name(wb_destE2));
-    	set_reg_val(reg, wb_destE2, wb_valE);
+     		wb_valE2, reg_name(wb_destE2));
+    	set_reg_val(reg, wb_destE2, wb_valE2);
     }
     if (wb_destM != REG_NONE) {
 	sim_log("\tWriteback: Wrote 0x%x to register %s\n",
@@ -672,16 +674,16 @@ void tty_report(int cyc) {
 	  reg_name(id_ex_curr->deste), reg_name(id_ex_curr->deste2), reg_name(id_ex_curr->destm),
 	  stat_name(id_ex_curr->status));
 
-  sim_log("M: instr = %s, Cnd = %d, valE = 0x%x, valA = 0x%x\n   dstE = %s, dstE2 = %s, dstM = %s, Stat = %s\n",
+  sim_log("M: instr = %s, Cnd = %d, valE = 0x%x, valE2 = 0x%x, valA = 0x%x\n   dstE = %s, dstE2 = %s, dstM = %s, Stat = %s\n",
 	  iname(HPACK(ex_mem_curr->icode, ex_mem_curr->ifun)),
 	  ex_mem_curr->takebranch,
-	  ex_mem_curr->vale, ex_mem_curr->vala,
+	  ex_mem_curr->vale, ex_mem_curr->vale2, ex_mem_curr->vala,
 	  reg_name(ex_mem_curr->deste), reg_name(ex_mem_curr->deste2), reg_name(ex_mem_curr->destm),
 	  stat_name(ex_mem_curr->status));
 
-  sim_log("W: instr = %s, valE = 0x%x, valM = 0x%x, dstE = %s, dstE2 = %s, dstM = %s, Stat = %s\n",
+  sim_log("W: instr = %s, valE = 0x%x, valE2 = 0x%x, valM = 0x%x, dstE = %s, dstE2 = %s, dstM = %s, Stat = %s\n",
 	  iname(HPACK(mem_wb_curr->icode, mem_wb_curr->ifun)),
-	  mem_wb_curr->vale, mem_wb_curr->valm,
+	  mem_wb_curr->vale, mem_wb_curr->vale2, mem_wb_curr->valm,
 	  reg_name(mem_wb_curr->deste), reg_name(mem_wb_curr->deste2), reg_name(mem_wb_curr->destm),
 	  stat_name(mem_wb_curr->status));
 }
@@ -1367,16 +1369,16 @@ void wstring(unsigned x, int bpd, int bpw, char *str)
 
 pc_ele bubble_pc = {0,STAT_AOK};
 if_id_ele bubble_if_id = { I_NOP, 0, REG_NONE,REG_NONE,
-			   0, 0, STAT_BUB, 0, REG_NONE };
+			   0, 0, STAT_BUB, 0 };
 id_ex_ele bubble_id_ex = { I_NOP, 0, 0, 0, 0,
 			   REG_NONE, REG_NONE, REG_NONE, REG_NONE,
 			   STAT_BUB, 0, REG_NONE };
 
 ex_mem_ele bubble_ex_mem = { I_NOP, 0, FALSE, 0, 0,
-			     REG_NONE, REG_NONE, STAT_BUB, 0, REG_NONE };
+			     REG_NONE, REG_NONE, STAT_BUB, 0, REG_NONE, 0 };
 
 mem_wb_ele bubble_mem_wb = { I_NOP, 0, 0, 0, REG_NONE, REG_NONE,
-			     STAT_BUB, 0, REG_NONE };
+			     STAT_BUB, 0, REG_NONE, 0 };
 
 /*************** Stage Implementations *****************/
 
@@ -1452,6 +1454,7 @@ int gen_d_valB();
 int gen_w_dstE();
 int gen_w_dstE2();
 int gen_w_valE();
+int gen_w_valE2();
 int gen_w_dstM();
 int gen_w_valM();
 int gen_Stat();
@@ -1463,6 +1466,7 @@ void do_id_wb_stages()
     wb_destE = gen_w_dstE();
     wb_destE2 = gen_w_dstE2();
     wb_valE = gen_w_valE();
+    wb_valE2 = gen_w_valE2();
     wb_destM = gen_w_dstM();
     wb_valM = gen_w_valM();
 
@@ -1519,10 +1523,21 @@ void do_ex_stage()
 	      ex_mem_next->takebranch ? "" : "not ");
 
     /* Perform the ALU operation */
+    if (alufun == A_DIV && alua == 0) {
+      sim_log("Error Execute: instr = %s, Divide by zero.\n",
+	      iname(HPACK(id_ex_curr->icode, id_ex_curr->ifun)));
+      ex_mem_next->status = STAT_INS;
+      status = STAT_INS;
+      return;
+    }
     word_t aluout = compute_alu(alufun, alua, alub);
     ex_mem_next->vale = aluout;
+    word_t aluout2 = compute_alu2(alufun, alua, alub);
+    ex_mem_next->vale2 = aluout2;
     sim_log("\tExecute: ALU: %c 0x%x 0x%x --> 0x%x\n",
 	    op_name(alufun), alua, alub, aluout);
+    sim_log("\tExecute: ALU2: %c 0x%x 0x%x --> 0x%x\n",
+  	  op_name(alufun), alua, alub, aluout2);
 
     if (setcc) {
 	cc_in = compute_cc(alufun, alua, alub);
@@ -1574,6 +1589,7 @@ void do_mem_stage()
     mem_wb_next->icode = ex_mem_curr->icode;
     mem_wb_next->ifun = ex_mem_curr->ifun;
     mem_wb_next->vale = ex_mem_curr->vale;
+    mem_wb_next->vale2 = ex_mem_curr->vale2;
     mem_wb_next->valm = valm;
     mem_wb_next->deste = ex_mem_curr->deste;
     mem_wb_next->deste2 = ex_mem_curr->deste2;
